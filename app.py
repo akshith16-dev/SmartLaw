@@ -3,75 +3,83 @@ import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# ------------------------------------
-# Load the cleaned IPC dataset
-# ------------------------------------
-data = pd.read_csv("ipc_fir_final_cleaned.csv")
+# -----------------------------
+# Page config (important)
+# -----------------------------
+st.set_page_config(page_title="SmartLaw", page_icon="⚖️")
 
-# ------------------------------------
-# Train TF-IDF Model
-# ------------------------------------
+# -----------------------------
+# Load dataset
+# -----------------------------
+data = pd.read_csv("ipc_fir_cleaned.csv")
+
+# -----------------------------
+# Train TF-IDF
+# -----------------------------
 vectorizer = TfidfVectorizer(stop_words="english")
 tfidf_matrix = vectorizer.fit_transform(data["text"])
 
-# ------------------------------------
-# Chatbot Logic with Confidence Score
-# ------------------------------------
-def get_legal_response(user_query):
-    query_vector = vectorizer.transform([user_query])
-    similarity_scores = cosine_similarity(query_vector, tfidf_matrix)[0]
-    
+# -----------------------------
+# Chatbot logic
+# -----------------------------
+def get_legal_response(query):
+    query_vec = vectorizer.transform([query])
+    similarity_scores = cosine_similarity(query_vec, tfidf_matrix)[0]
     best_index = similarity_scores.argmax()
     best_score = similarity_scores[best_index]
-    
     return best_index, best_score
 
-# ------------------------------------
-# Streamlit UI
-# ------------------------------------
+# -----------------------------
+# UI Header
+# -----------------------------
 st.title("⚖️ SmartLaw: From Confusion to Conclusion")
 st.caption("An NLP-Based Legal Awareness Chatbot")
 
-st.markdown("""
-**How it works:**
-- Enter a legal situation or IPC section  
-- The system finds the most relevant law  
-- Results are for legal awareness only  
-""")
+# -----------------------------
+# Initialize chat history
+# -----------------------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-st.markdown("""
-**Example queries:**
-- Police threatened me with cheating case  
-- Wearing police uniform illegally  
-- Helping prisoner escape  
-- Harbouring criminal  
-""")
+# -----------------------------
+# Display chat history
+# -----------------------------
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-# User input
-user_input = st.text_input("Enter your legal query:")
+# -----------------------------
+# Chat input (THIS IS KEY)
+# -----------------------------
+user_input = st.chat_input("Ask about any IPC section or legal situation...")
 
-# ------------------------------------
-# Display Result
-# ------------------------------------
 if user_input:
+    # Show user message
+    st.session_state.messages.append(
+        {"role": "user", "content": user_input}
+    )
+
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # Get bot response
     index, confidence = get_legal_response(user_input)
 
-    # Confidence threshold
     if confidence < 0.15:
-        st.warning("No relevant IPC section found for your query.")
+        bot_reply = "❌ No relevant IPC section found for your query."
     else:
-        result = data.iloc[index]
-        st.subheader(f"IPC Section {result['section']}")
-        st.write("**Description:**", result["description"])
-        st.write("**Punishment:**", result["punishment"])
-        st.caption(f"Similarity confidence score: {round(confidence, 2)}")
+        row = data.iloc[index]
+        bot_reply = (
+            f"**IPC Section {row['section']}**\n\n"
+            f"**Description:** {row['description']}\n\n"
+            f"**Punishment:** {row['punishment']}\n\n"
+            f"_Confidence score: {round(confidence, 2)}_"
+        )
 
-# ------------------------------------
-# Sidebar Information
-# ------------------------------------
-st.sidebar.title("About SmartLaw")
-st.sidebar.write(
-    "SmartLaw is an NLP-based legal awareness chatbot "
-    "that uses TF-IDF and cosine similarity to help users "
-    "understand Indian legal sections in a simple manner."
-)
+    # Save bot message
+    st.session_state.messages.append(
+        {"role": "assistant", "content": bot_reply}
+    )
+
+    with st.chat_message("assistant"):
+        st.markdown(bot_reply)
