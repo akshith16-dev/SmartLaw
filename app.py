@@ -11,7 +11,7 @@ st.set_page_config(page_title="SmartLaw", page_icon="⚖️")
 # -----------------------------
 # Load dataset
 # -----------------------------
-data = pd.read_csv("ipc_fir_cleaned.csv")
+data = pd.read_csv("Ipc_fir_cleaned.csv")
 
 # -----------------------------
 # Train TF-IDF
@@ -83,3 +83,4 @@ if user_input:
 
     with st.chat_message("assistant"):
         st.markdown(bot_reply)
+
